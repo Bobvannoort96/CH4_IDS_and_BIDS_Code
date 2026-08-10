@@ -1,0 +1,117 @@
+clear; clc;
+pathname_full_grid = 'C:\Users\bgvannoort\Documents\IDS\Sim Data\';
+pathname = 'C:\Users\bgvannoort\Documents\IDS\Sim Data\';
+topDir = 'C:\Users\bgvannoort\Documents\IDS\';
+
+x = importdata(fullfile(pathname_full_grid, 'grid_x.txt'));
+y = importdata(fullfile(pathname_full_grid, 'grid_y.txt'));
+z = importdata(fullfile(pathname_full_grid, 'grid_z.txt'));
+fault_vectors = importdata(fullfile(pathname_full_grid, 'fault_vectors.txt'));
+
+Qtt = eye(3);
+partitions = ["P0" "P1" "P2" "P3" "P4" "P12" "P13" "P14" "P21" "P23" "P24" "P31" "P32" "P34" "P41" "P42" "P43" "P99"];
+partitions_legend = ["P0" "P1" "P2" "P3" "P4" "P12" "P13" "P14" "P23" "P24" "P34" "P99"];
+colors_partitions = ["#F5F5F5" "yellow" "red" "blue" "#A99BA7" "#FFAA00" "green" "#D0B623" "#FFAA00" "magenta" "#FF9F65" "green" "magenta" "#65F1FF" "#D0B623" "#FF9F65" "#65F1FF" "black"];
+colors_partitions_alldiff = ["#F5F5F5" "yellow" "red" "blue" "#A99BA7" "#FFAA00" "green" "#D0B623" "#FACE76" "magenta" "#FF9F65" "#6BFF64" "#FFAAF6" "#65F1FF" "#C19929" "#C45715" "#018A98" "black"];
+dict_parts = dictionary(partitions, colors_partitions);
+dict_parts_alldiff = dictionary(partitions, colors_partitions_alldiff);
+
+type_of_alpha = 'Kok_IDS';
+separate_partitions = true;
+last_OMT = true;
+plot_proj_fault_lines = false;
+inPlane = false;
+alpha_0 = 'default';
+factor = 6;
+
+figure('Position', [100, 100, 2000, 700])
+t = tiledlayout(1, 4, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+% Main loop over A, B, C
+type_list = {'A', 'B', 'C'};
+for idx = 1:length(type_list)
+    type_of_DS = type_list{idx};
+    nexttile; 
+    
+    surf(x, y, z, 'EdgeColor', 'none', 'FaceColor', 'white');
+    hold on
+    i = 1;
+
+    % Filepath config
+    if last_OMT
+        firstpartDir = fullfile(pathname, 'IDS', type_of_DS, 'separate_partitionings', 'lastOMT');
+    else
+        firstpartDir = fullfile(pathname, 'IDS', type_of_DS, 'separate_partitionings');
+    end
+
+    if type_of_alpha == "manual"
+        datadir = fullfile(firstpartDir, ['alpha_type_', type_of_alpha], ['alpha_0=', num2str(alpha_0)], ['Partitioned_grid'], ['factor_', num2str(factor)]);
+    else
+        datadir = fullfile(firstpartDir, ['alpha_type_', type_of_alpha], ['Partitioned_grid'], ['factor_', num2str(factor)]);
+    end
+
+    h = []; p_name = {};
+
+    for part = partitions
+        datafile = fullfile(datadir, append(part, '_xx.txt'));
+        if exist(datafile, 'file') == 2
+            xx = importdata(fullfile(datadir, append(part, '_xx.txt')));
+            yy = importdata(fullfile(datadir, append(part, '_yy.txt')));
+            zz = importdata(fullfile(datadir, append(part, '_zz.txt')));
+
+            if any(partitions_legend == part)
+                h(i) = surf(xx, yy, zz, 'EdgeColor', 'none', 'FaceColor', dict_parts(part));
+                hypt = str2double(extractAfter(part, "P"));
+                if hypt == 99
+                    p_name{i} = ['$\mathcal{P}_{\Omega}$'];
+                else
+                    p_name{i} = ['$\mathcal{P}_{', int2str(hypt), '}$'];
+                end
+                i = i + 1;
+            elseif separate_partitions
+                surf(xx, yy, zz, 'EdgeColor', 'none', 'FaceColor', dict_parts(part));
+                h(i) = surf(xx, yy, zz, 'EdgeColor', 'none', 'FaceColor', dict_parts_alldiff(part));
+                hypt = str2double(extractAfter(part, "P"));
+                if hypt == 99
+                    p_name{i} = ['$\mathcal{P}_{\Omega}$'];
+                else
+                    p_name{i} = ['$\mathcal{P}_{', int2str(hypt), '}$'];
+                end
+                i = i + 1;
+            else
+                surf(xx, yy, zz, 'EdgeColor', 'none', 'FaceColor', dict_parts(part));
+            end
+        end
+    end
+
+    % Plot cti vectors
+    for i = 1:4
+        cti = fault_vectors(:,i)/vecnorm(fault_vectors(:,i));
+        plot3(cti(1),cti(2),cti(3),'k+','LineWidth',3,'MarkerSize',2)
+        plot3(-cti(1),-cti(2),-cti(3),'k+','LineWidth',3,'MarkerSize',2)
+    end
+
+    axis equal
+    axis off
+    campos(- 2*fault_vectors(:,1)/vecnorm(fault_vectors(:,1)));
+    xlim([-2 2]); ylim([-2 2]); zlim([-2 2]);
+    title(['Type ', type_of_DS, ', R = ', num2str(factor)]);
+
+
+
+
+end
+
+lgd_tile = nexttile(t, 7);
+axis(lgd_tile, 'off')
+legend(h, p_name, 'Interpreter', 'latex', 'FontSize', 14, ...
+       'Box', 'on', 'Location', 'northwest');
+
+% Save the combined figure
+subdirs = fullfile(topDir, 'Figures_report', 'IDS', 'combined');
+if ~exist(subdirs, 'dir')
+    mkdir(subdirs)
+end
+
+exportgraphics(gcf, fullfile(subdirs, append('Partitioning_IDS_combined_factor_', num2str(factor), '.pdf')), ...
+    'Resolution', 300, 'BackgroundColor', 'none', 'ContentType', 'image');
