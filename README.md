@@ -34,7 +34,7 @@ Four testing procedures are implemented:
 pip install -r requirements.txt
 ```
 
-MATLAB (R2020b or newer) is needed only for the misclosure-sphere figures.
+MATLAB (R2024b or newer) is needed only for the misclosure-sphere figures.
 
 ### 1.2 Hard-coded paths — read this first
 
